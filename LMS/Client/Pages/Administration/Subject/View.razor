@@ -1,0 +1,114 @@
+﻿@page "/Subject/View"
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IToastService toastService
+@inject IJSRuntime JsRuntime
+
+<h1>List of Chapters</h1>
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+@if (subjects == null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage .
+    </div>
+    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateSubject"
+                    >Add Chapter</button>
+    toastService.ShowInfo("NoRecord Found", "Chapter");
+}
+else
+{
+    <table class="table table-responsive table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Grade</th>
+                <th>
+                    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateSubject"
+                    >Add Subject</button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var sub in subjects)
+            {
+                <tr>
+                    <td>@sub.Name</td>
+                    <td>@sub.Grade.Name</td>
+                    <td align="center">
+                        <button class="btn btn-success col-4" 
+                                @onclick="( () => 
+                                    UpdateSubject(sub.SubjectId))"
+                        >Edit</button>
+                        <button class="btn btn-warning col-4" 
+                                @onclick="( () => 
+                                    DeleteSubject(sub.SubjectId))"
+                        >delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IList<Subject>? subjects = new List<Subject>();
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                subjects = await HttpModule.GetFromJsonAsync<List<Subject>>("api/Subjects/GetSubjects");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+            toastService.ShowError("Invalid Server Response", "Error");
+            errorMessage = "Invalid Server Reponse";
+        }
+    }
+
+    public async void DeleteSubject(int id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await HttpModule.DeleteAsync($"api/Subjects/{id}");
+            toastService.ShowError("Deleted Successfully", "Subjects");
+            subjects = await HttpModule.GetFromJsonAsync<List<Subject>>("api/Subjects");
+            await InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void UpdateSubject(int id)
+    {
+        Navigate.NavigateTo($"Subject/Edit/{id}");
+    }
+
+    public void CreateSubject()
+    {
+        Navigate.NavigateTo("Subject/Create");
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("Subject/View");
+    }
+}

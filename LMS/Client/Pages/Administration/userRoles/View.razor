@@ -1,0 +1,111 @@
+﻿@page "/userRoles/View"
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IToastService toastService
+@inject IJSRuntime JsRuntime
+
+<h1>List of Roles</h1>
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+@if (userRoles == null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage .
+    </div>
+    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateTehsil"
+                    >Create Role</button>
+    toastService.ShowInfo("NoRecord Found", "Topics");
+}
+else
+{
+    <table class="table table-responsive table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>
+                    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateTehsil"
+                    >Create Role</button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var roles in userRoles)
+            {
+                <tr>
+                    <td>@roles.Name</td>
+                    <td align="center">
+                        <button class="btn btn-success col-4" 
+                                @onclick="( () => 
+                                    UpdateRole(roles.Id))"
+                        >Edit</button>
+                        <button class="btn btn-warning col-4" 
+                                @onclick="( () => 
+                                    DeleteRole(roles.Id))"
+                        >delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IList<userRoles>? userRoles = new List<userRoles>();
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                userRoles = await HttpModule.GetFromJsonAsync<List<userRoles>>("api/UserRoles");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+            toastService.ShowInfo("Login is nessecary..", "Login");
+        }
+    }
+
+    public async void DeleteRole(string? id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await HttpModule.DeleteAsync($"api/UserRoles/{id}");
+            toastService.ShowError("Deleted Successfully", "UserRoles");
+            userRoles = await HttpModule.GetFromJsonAsync<List<userRoles>>("api/UserRoles");
+            await InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void UpdateRole(string? id)
+    {
+        Navigate.NavigateTo($"userRoles/Edit/{id}");
+    }
+
+    public void CreateTehsil()
+    {
+        Navigate.NavigateTo("userRoles/Create");
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("userRoles/View");
+    }
+}

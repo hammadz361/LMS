@@ -1,0 +1,113 @@
+﻿@page "/District/View"
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IToastService toastService
+@inject IJSRuntime JsRuntime
+
+<h1>List of Districts</h1>
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+@if (districts == null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage .
+    </div>
+    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateDistrict"
+                    >Add District</button>
+    toastService.ShowInfo("NoRecord Found", "District");
+}
+else
+{
+    <table class="table table-responsive table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>
+                    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateDistrict"
+                    >Add District</button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var district in districts)
+            {
+                <tr>
+                    <td>@district.Name</td>
+                    <td align="center">
+                        <button class="btn btn-success col-4" 
+                                @onclick="( () => 
+                                    UpdateDistrict(district.DistrictId))"
+                        >Edit</button>
+                        <button class="btn btn-warning col-4" 
+                                @onclick="( () => 
+                                    DeleteDistrict(district.DistrictId))"
+                        >delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IList<District>? districts = new List<District>();
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                districts = await HttpModule.GetFromJsonAsync<List<District>>("api/Districts");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+            toastService.ShowInfo("Login is neccesary", "Login");
+            errorMessage = "Login is neccesary";
+        }
+    }
+
+    public async void DeleteDistrict(int id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await HttpModule.DeleteAsync($"api/Districts/{id}");
+            toastService.ShowError("Deleted Successfully", "District");
+            districts = await HttpModule.GetFromJsonAsync<List<District>>("api/Districts");
+            await InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void UpdateDistrict(int id)
+    {
+        Navigate.NavigateTo($"District/Edit/{id}");
+    }
+
+    public void CreateDistrict()
+    {
+        Navigate.NavigateTo("District/Create");
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("District/View");
+    }
+}

@@ -1,0 +1,73 @@
+﻿@page "/District/Edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+<EditForm Model="@districts" OnValidSubmit="@OnUpdate">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+        <div class="row justify-content-center align-items-center">
+             <div class="card col-sm-6 px-0">
+                <h4 class="card-header text-center">Edit District</h4>
+                <div class="card-body">
+                    <InputText class="form-control" id="name" @bind-Value="districts.Name" /><br>
+                    <button type="submit" class="btn btn-success">Edit</button> 
+                </div>
+            </div> 
+        </div> 
+</EditForm>
+
+@code {
+    private District? districts = new();
+    public string? errorMessage;
+    [Parameter]public int id { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                districts = await HttpModule.GetFromJsonAsync<District>($"api/Districts/{id}");
+            }
+            catch(Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch(AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+            toastService.ShowInfo("Login is neccesary", "Login");
+        }
+    }
+
+    public async Task OnUpdate()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync($"api/Districts/{id}", districts);
+            toastService.ShowInfo("Updated Successfully", "District");
+            Navigate.NavigateTo("District/View");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Error Occured on server response", "Error");
+            errorMessage = "Error Occured on server response";
+        }
+
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("District/View");
+    }
+}

@@ -1,0 +1,127 @@
+﻿@page "/Grade/Edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+<EditForm Model="@grade" OnValidSubmit="@OnUpdate">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="row px-0 justify-content-center align-items-center">
+        <div class="card col-sm-6 px-0">
+            <h4 class="card-header text-center">Edit Grade</h4>
+            <div class="card-body">
+                <div class="row">
+                         <div class=col-md>
+                             <label for="name" class="form-text">Name</label>
+                             <InputText class="form-control" id="name" @bind-Value="grade.Name" /><br />
+                             <ValidationMessage For="@(() => grade.Name)" />
+                         </div>
+                     </div>
+                     <div class="row">
+                         <div class=col-md>
+                             <label for="code" class="form-text">Code</label>
+                             <InputText class="form-control" id="code" @bind-Value="grade.Code" /><br />
+                             <ValidationMessage For="@(() => grade.Code)" />
+                         </div>
+                     </div>
+                     <div class="row">
+                         <div class=col-md>
+                             <label for="image" class="form-text">Select Title Image</label>
+                             <InputFile class="form-control" id="image" OnChange="e => LoadFiles(e)"></InputFile><br />
+                             <ValidationMessage For="@(() => grade.ImagePath)" />
+                         </div>
+                     </div>
+                     <div class="row">
+                         <div class="col-md">
+                             <select class="form-control" @onchange="@gradeClicked">
+                                 <option>@schoolLevels[id].Name</option>
+                                 @if (schoolLevels != null)
+                                 {
+                                     @foreach (var grade in schoolLevels)
+                                     {
+                                         <option value="@grade.SchoolLevelId">@grade.Name</option>
+                                     }
+                                 }
+                             </select>
+                         </div>
+                     </div><br />
+                <button type="submit" class="btn btn-success">Edit</button> 
+            </div>
+        </div> 
+    </div> 
+</EditForm>
+
+@code {
+    private Grade? grade = new();
+    private IList<SchoolLevel>? schoolLevels = new List<SchoolLevel>();
+    private UploadedFile? uploadedFile = new();
+    private string? errorMessage;
+    [Parameter]public int id { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                grade = await HttpModule.GetFromJsonAsync<Grade>($"api/Grades/{id}");
+                schoolLevels = await HttpModule.GetFromJsonAsync<List<SchoolLevel>>("api/SchoolLevels");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch(AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+            toastService.ShowInfo("Login is Nessecary..", "Login");
+        }
+    }
+
+    public async Task OnUpdate()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync($"api/Grades/{id}", grade);
+            toastService.ShowInfo("Updated Successfully", "Grades");
+            Navigate.NavigateTo("Grade/View");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Error Occured on server response", "Error");
+            errorMessage = "Error Occured on server response";
+        }
+    }
+    public void gradeClicked(ChangeEventArgs Event)
+    {        
+        grade.SchoolLevelId = int.Parse(Event.Value.ToString());
+        this.StateHasChanged();
+    }
+
+    public async void LoadFiles(InputFileChangeEventArgs e)
+    {
+        uploadedFile = await HttpModule.GetFromJsonAsync<UploadedFile>("api/UploadedFiles/GetDirectory");
+        string filePath = string.Concat(uploadedFile?.Path, e.File.Name);
+        var model = e.File.OpenReadStream();
+        var read = model.CanRead;
+        using var stream = new FileStream(filePath, FileMode.Create);
+        e.File.OpenReadStream().CopyToAsync(stream).GetAwaiter();
+        grade.ImagePath = string.Concat("/images/" + e.File.Name).ToString();
+    }
+
+    public void errormsg()
+    {
+        Navigate.NavigateTo("Grade/View");
+    }
+
+}

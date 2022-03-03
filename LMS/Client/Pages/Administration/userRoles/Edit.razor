@@ -1,0 +1,79 @@
+﻿@page "/userRoles/Edit/{id}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+<EditForm Model="@UserRole" OnValidSubmit="@OnUpdate">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="row justify-content-center align-items-center">
+             <div class="card col-sm-6 px-0">
+                <h4 class="card-header text-center">Edit Role</h4>
+                <div class="card-body">
+                    <div class="row">
+                      <div class=col-sm>
+                          <label for="name" class="form-text">Name</label>
+                          <InputText class="form-control" id="name" @bind-Value="UserRole.Name" />
+                          <ValidationMessage For="@(() => UserRole.Name)" />
+                      </div>
+                    </div><br>
+                    <button type="submit" class="btn btn-success">Edit</button> 
+                </div>
+            </div> 
+        </div> 
+</EditForm>
+
+@code {
+    private userRoles? UserRole = new();
+    private string? errorMessage;
+    [Parameter]public string? id { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                UserRole = await HttpModule.GetFromJsonAsync<userRoles>($"api/UserRoles/{id}");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch(AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+            toastService.ShowInfo("Login is Nessecary..", "Login");
+        }
+    }
+
+    public async Task OnUpdate()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync($"api/UnionCouncils/{id}", UserRole);
+            toastService.ShowInfo("Updated Successfully", "userRoles");
+            Navigate.NavigateTo("userRoles/View");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Error Occured on server response", "Error");
+            errorMessage = "Error Occured on server response";
+        }
+    }
+
+    public void errormsg()
+    {
+        Navigate.NavigateTo("userRoles/View");
+    }
+}

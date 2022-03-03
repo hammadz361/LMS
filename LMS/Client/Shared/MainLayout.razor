@@ -1,0 +1,47 @@
+﻿@inherits LayoutComponentBase
+@using Blazored.Toast.Configuration
+<head>
+    <link href="_content/Blazored.Toast/blazored-toast.min.css" rel="stylesheet" />
+    <link href="_content/Blazored.Toast/blazored-toast.css" rel="stylesheet" />
+</head>
+<BlazoredToasts Position="ToastPosition.BottomRight"
+                Timeout="2"
+                IconType="IconType.FontAwesome"
+                SuccessClass="success-toast-override"
+                SuccessIcon="fa fa-thumbs-up"
+                ErrorIcon="fa fa-bug" />
+    <div class="page">
+        <AuthorizeView>
+            <Authorized>
+                @{
+                    var user = @context.User.Identity.Name.ToString();
+                }
+                @if (user.StartsWith("Admin") || user.StartsWith("admin"))
+                {
+                    <div class="sidebar" style="height: auto;">
+                        <NavMenu />
+                    </div>
+                }
+                else
+                {
+                    <div class="sidebar" style="height: 100vh;">
+                        <NavMenu />
+                    </div>
+                }
+            </Authorized>
+            <NotAuthorized>
+                <div class="sidebar" style="height: 100vh;">
+                    <NavMenu />
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <main>
+            <div class="top-row auth">
+                <LoginDisplay />
+            </div>
+            <article style="padding-left: 5px !important; padding-right: 5px !important">
+                @Body
+            </article>
+        </main>
+    </div>

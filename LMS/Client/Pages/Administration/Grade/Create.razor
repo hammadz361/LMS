@@ -1,0 +1,126 @@
+﻿@page "/Grade/Create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+@using System.IO
+
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+<div class="container">
+    <EditForm Model="@grade" OnValidSubmit="@OnSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="row justify-content-center align-items-center">
+             <div class="card col-sm-6 px-0">
+                 <h4 class="card-header text-center">Create Grade</h4>
+                 <div class="card-body">
+                     <div class="row">
+                         <div class=col-md>
+                             <label for="name" class="form-text">Name</label>
+                             <InputText class="form-control" id="name" @bind-Value="grade.Name" /><br />
+                             <ValidationMessage For="@(() => grade.Name)" />
+                         </div>
+                     </div>
+                     <div class="row">
+                         <div class=col-md>
+                             <label for="code" class="form-text">Code</label>
+                             <InputText class="form-control" id="code" @bind-Value="grade.Code" /><br />
+                             <ValidationMessage For="@(() => grade.Code)" />
+                         </div>
+                     </div>
+                     <div class="row">
+                         <div class=col-md>
+                             <label for="image" class="form-text">Select Title Image</label>
+                             <InputFile class="form-control" id="image" OnChange="e => LoadFiles(e)"></InputFile><br />
+                             <ValidationMessage For="@(() => grade.ImagePath)" />
+                         </div>
+                     </div>
+                     <div class="row">
+                         <div class="col-md">
+                             <select class="form-control" @onchange="@gradeClicked">
+                                 <option value="">-- Select SchoolLevel --</option>
+                                 @if (schoolLevels != null)
+                                 {
+                                     @foreach (var grade in schoolLevels)
+                                     {
+                                         <option value="@grade.SchoolLevelId">@grade.Name</option>
+                                     }
+                                 }
+                             </select>
+                         </div>
+                     </div><br />
+                     <button type="submit" class="btn btn-success ">Submit</button>
+                 </div>
+            </div>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private UploadedFile? uploadedFile = new();
+    private Grade grade = new();
+    private IList<SchoolLevel>? schoolLevels = new List<SchoolLevel>();
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                schoolLevels = await HttpModule.GetFromJsonAsync<IList<SchoolLevel>>($"api/SchoolLevels");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch(AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+            toastService.ShowInfo("Login is neccesary", "Login");
+        }
+    }
+    public async Task OnSubmit()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync("api/Grades", grade);
+            toastService.ShowSuccess("Added Successfully!..", nameof(Grade));
+            Navigate.NavigateTo("Grade/View");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Dont have Access only admins can view this page", "Error");
+            errorMessage = "Dont have Access only admins can view this page";
+        }
+
+    }
+    public void gradeClicked(ChangeEventArgs Event)
+    {        
+        grade.SchoolLevelId = int.Parse(Event.Value.ToString());
+        this.StateHasChanged();
+    }
+
+    public async void LoadFiles(InputFileChangeEventArgs e)
+    {
+        uploadedFile = await HttpModule.GetFromJsonAsync<UploadedFile>("api/UploadedFiles/GetDirectory");
+        string filePath = string.Concat(uploadedFile?.Path, e.File.Name);
+        var model = e.File.OpenReadStream();
+        var read = model.CanRead;
+        using var stream = new FileStream(filePath, FileMode.Create);
+        e.File.OpenReadStream().CopyToAsync(stream).GetAwaiter();
+        grade.ImagePath = string.Concat("/images/" + e.File.Name).ToString();
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("Grade/View");
+    }
+}

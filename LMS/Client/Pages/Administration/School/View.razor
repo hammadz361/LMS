@@ -1,0 +1,113 @@
+﻿@page "/School/View"
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IToastService toastService
+@inject IJSRuntime JsRuntime
+
+<h1>List of Schools</h1>
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+@if (Schools == null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage .
+    </div>
+    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateSchool"
+                    >Add School</button>
+    toastService.ShowInfo("NoRecord Found", "Schools");
+}
+else
+{
+    <table class="table table-responsive table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>School Level</th>
+                <th>
+                    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateSchool"
+                    >Add School</button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var School in Schools)
+            {
+                <tr>
+                    <td>@School.Name</td>
+                    <td>@School.SchoolLevel.Name</td>
+                    <td align="center">
+                        <button class="btn btn-success col-4" 
+                                @onclick="( () => 
+                                    UpdateSchool(School.SchoolId))"
+                        >Edit</button>
+                        <button class="btn btn-warning col-4" 
+                                @onclick="( () => 
+                                    DeleteSchool(School.SchoolId))"
+                        >delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IList<School>? Schools = new List<School>();
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                Schools = await HttpModule.GetFromJsonAsync<List<School>>("api/Schools");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+            toastService.ShowInfo("Login is nessecery!..");
+        }
+    }
+
+    public async void DeleteSchool(int id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await HttpModule.DeleteAsync($"api/Schools/{id}");
+            toastService.ShowError("Deleted Successfully", "Schools");
+            Schools = await HttpModule.GetFromJsonAsync<List<School>>("api/Schools");
+            await InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void UpdateSchool(int id)
+    {
+        Navigate.NavigateTo($"School/Edit/{id}");
+    }
+
+    public void CreateSchool()
+    {
+        Navigate.NavigateTo("School/Create");
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("School/View");   
+    }
+}

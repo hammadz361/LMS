@@ -1,0 +1,10 @@
+﻿@page "/"
+
+<div class="container-fluid p-0 mx-0">
+    <img src="/images/mainlogo.jpg" class="img-fluid" alt="Responsive image" style="height: 400px; width: 100%;">
+</div>
+@code{
+    // Gets a reference to the MainLayout component
+    [CascadingParameter]
+    public bool root { get; set; } = true;
+}

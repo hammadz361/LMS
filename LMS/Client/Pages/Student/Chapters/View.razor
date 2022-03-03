@@ -1,0 +1,111 @@
+﻿@page "/Student/Chapters/View/{Subid:int}/{Gradeid:int?}"
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IToastService toastService
+
+<h1>List of Subjects</h1>
+
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to Subjects page</a>. Click on link.
+    </div>
+}
+else
+{
+    <div class="container">
+        <div class="row my-3">
+            <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item text-primary" style="cursor: pointer;" @onclick="GoBackGrade">Grade</li>
+                <li class="breadcrumb-item text-primary" style="cursor: pointer;" @onclick="( () => GoBack(Gradeid))">Subject</li>
+                <li class="breadcrumb-item active" aria-current="page">Chapter</li>
+              </ol>
+            </nav>
+        </div>
+        <div class="row">
+            @foreach (var Chapter in Chapters.Where(a => a.SubjectId == Subid))
+            {
+            <div class="col-lg-4 col-xl-4 col-sm-6 col-12 mt-5 text-center" @onclick="( () => ViewChapter(Chapter.ChapterId))">
+                @{
+                    if (Chapter.SubjectId == 15 || Chapter.SubjectId == 20)
+                    {
+                        <img src="@Chapter.ImagePath" width="260" style="cursor:pointer" />
+                    }
+                    else if (Chapter.SubjectId == 5)
+                    {
+                        <img src="@Chapter.ImagePath" style="cursor:pointer" />
+                        <p style="cursor: pointer; background: #6f42c1; color: whitesmoke; border-radius: 5px;margin-top:4px">@Chapter.Name</p>
+                    }
+                    else if (Chapter.SubjectId == 10)
+                    {
+                        <img src="@Chapter.ImagePath" height="110" style="cursor:pointer" />
+                        <p style="cursor: pointer; background: rgba(0,255,255,0.8); border-radius: 5px; margin-top: 4px">@Chapter.Name</p>
+                    }
+                    else
+                    {
+                        <img src="@Chapter.ImagePath" width="100" style="cursor:pointer" />
+                        <p style="cursor:pointer">@Chapter.Name</p>
+                    }
+                }
+            </div>
+            }
+        </div>
+        @{
+            if (Chapters.Where(a=>a.SubjectId == Subid).Count() == 0)
+            {   
+                <div class="alert alert-danger my-5" role="alert">
+                  <h3>Coming soon...</h3>
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Subid { get; set; }
+    [Parameter] public int Gradeid { get; set; }
+    private IList<Chapter>? Chapters = new List<Chapter>();
+    public List<string> WidthCode = new List<string>() { "130", "170", "115", "155", "110" };
+    public List<string> HeightCode = new List<string>() { "130", "130", "130", "130", "130" };
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                Chapters = await HttpModule.GetFromJsonAsync<List<Chapter>>("api/Chapters");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+            toastService.ShowInfo("Login is neccesary", "Login");
+        }
+    }
+
+    public void ViewChapter(int Chpid)
+    {
+        Navigate.NavigateTo($"Student/Videos/View/{Chpid}/{this.Subid}/{this.Gradeid}");
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo($"Student/Subjects/View/{Subid}");
+    }
+    public void GoBack(int Gradeid)
+    {
+        Navigate.NavigateTo($"Student/Subjects/View/{Gradeid}");
+    }
+    public void GoBackGrade()
+    {
+        Navigate.NavigateTo("/Student/Grades/View");
+    }
+}

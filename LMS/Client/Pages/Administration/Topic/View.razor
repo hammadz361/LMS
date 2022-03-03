@@ -1,0 +1,112 @@
+﻿@page "/Topic/View"
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IToastService toastService
+@inject IJSRuntime JsRuntime
+
+<h1>List of Topics</h1>
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+@if (Topics == null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage .
+    </div>
+    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateTopic"
+                    >Add Topic</button>
+    toastService.ShowInfo("NoRecord Found", "Topics");
+}
+else
+{
+    <table class="table table-responsive table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>
+                    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateTopic"
+                    >Add Topic</button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var Topic in Topics)
+            {
+                <tr>
+                    <td>@Topic.Name</td>
+                    <td align="center">
+                        <button class="btn btn-success col-4" 
+                                @onclick="( () => 
+                                    UpdateTopic(Topic.TopicId))"
+                        >Edit</button>
+                        <button class="btn btn-warning col-4" 
+                                @onclick="( () => 
+                                    DeleteTopic(Topic.TopicId))"
+                        >delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IList<Topic>? Topics = new List<Topic>();
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                Topics = await HttpModule.GetFromJsonAsync<List<Topic>>("api/Topics");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+            toastService.ShowInfo("Login is nessecary..");
+        }
+    }
+
+    public async void DeleteTopic(int id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await HttpModule.DeleteAsync($"api/Topics/{id}");
+            toastService.ShowError("Deleted Successfully", "Topics");
+            Topics = await HttpModule.GetFromJsonAsync<List<Topic>>("api/Topics");
+            await InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void UpdateTopic(int id)
+    {
+        Navigate.NavigateTo($"Topic/Edit/{id}");
+    }
+
+    public void CreateTopic()
+    {
+        Navigate.NavigateTo("Topic/Create");
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("Topic/View");
+    }
+}

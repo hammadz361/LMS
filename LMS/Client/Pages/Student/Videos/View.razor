@@ -1,0 +1,124 @@
+﻿@page "/Student/Videos/View/{Chpid:int}/{Subid:int?}/{Gradeid:int?}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@attribute [Authorize]
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@inject IJSRuntime js
+@inject IModalService modal
+
+<style>
+div.card {
+	position: relative;
+	width: 15rem; 
+    cursor:pointer;
+	background: transparent;
+	margin: 20px;
+	border-radius: 15px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	backdrop-filter: blur(10px);
+}
+div > img{
+    height: 10rem;
+}
+div#effect5:hover
+{
+  box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22) !important;
+  -webkit-transform: rotate(-3deg);
+  -moz-transform: rotate(-3deg);
+  -o-transform: rotate(-3deg);
+  -ms-transform: rotate(-3deg);
+  transform: rotate(-3deg);
+}
+
+}
+</style>
+
+@if (videos == null)
+{
+<div class="spinner"></div>
+}
+else
+{
+    <div class="container">
+        <div class="row my-3">
+            <nav style="--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Cpath d='M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z' fill='currentColor'/%3E%3C/svg%3E&#34;);" aria-label="breadcrumb">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item text-primary" style="cursor: pointer;" @onclick="GoBackGrade">Grade</li>
+                <li class="breadcrumb-item text-primary" style="cursor: pointer;" @onclick="( () => GoBackSub(Gradeid))">Subject</li>
+                <li class="breadcrumb-item text-primary" style="cursor: pointer;" @onclick="( () => GoBackChp(Subid))">Chapter</li>
+                <li class="breadcrumb-item active" aria-current="page">Videos</li>
+              </ol>
+            </nav>
+        </div>
+        <div class="row text-center">
+            @foreach (var video in videos.Where(x => x.ChapterId.Equals(Chpid)))
+            {
+                if (video != null)
+                {
+                    <div class="card m-2 shadow-sm" id="effect5" @onclick="@(() => ShowVideo(video.VideoLink))">
+                        <img src="/images/Subject/video.png" class="card-img-top" alt="No Image Found">
+                        <div class="card-body">
+                            <h4 class="card-title">Topics</h4>
+                            <hr>
+                            @foreach(var topic in topics.Where(x => x.VideoId == video.VideoId))
+                            {
+                                <li class="card-text">@topic.Name</li>
+                            }
+                        </div>
+                    </div>
+
+                }
+            }
+        </div>
+        @{
+            if (videos.Count() == 0){
+                <h3>Coming soon...</h3>
+            }
+        }
+    </div>
+}
+
+@code
+{
+    [Parameter] public int Chpid { get; set; }
+    [Parameter] public int Subid { get; set; }
+    [Parameter] public int Gradeid { get; set; }
+    private IList<Topic>? topics = new List<Topic>();
+    private IList<Video>? videos = new List<Video>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            topics = await HttpModule.GetFromJsonAsync<List<Topic>>("api/Topics");
+            videos = await HttpModule.GetFromJsonAsync<List<Video>>("api/Videos");                     
+        }
+        catch (AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+        }
+    }
+
+    public void ShowVideo(string VLink)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(VLink), VLink);
+        modal.Show<VideoPlay>(VLink, parameters);
+    }
+    public void GoBackGrade()
+    {
+        Navigate.NavigateTo("Student/Grades/View");
+    }
+    public void GoBackSub(int Gradeid)
+    {
+        Navigate.NavigateTo($"Student/Subjects/View/{this.Subid}");
+    }
+    public void GoBackChp(int Subid)
+    {
+        Navigate.NavigateTo($"Student/Chapters/View/{Subid}/{this.Gradeid}");
+    }
+}

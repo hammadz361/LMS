@@ -1,0 +1,95 @@
+﻿@page "/Tehsil/Edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+<EditForm Model="@tehsil" OnValidSubmit="@OnUpdate">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+        <div class="row justify-content-center align-items-center">
+            <div class="card col-sm-6 px-0">
+                <h4 class="card-header text-center ">Edit Tehsil</h4>
+                <div class="card-body">
+                    <InputText class="form-control" id="name" @bind-Value="tehsil.Name" /><br>
+                </div>
+            </div> 
+        </div> 
+        <div class="row form-group">
+                <div class="col-md">
+                    <select class="form-control" @onchange="@tehsilClicked">
+                        <option>@districts[id].Name</option>
+                        @foreach (var item in districts)
+                        {
+                            <option value="@item.DistrictId">
+                                @item.Name
+                            </option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="row form-group">
+                <button type="submit" class="btn btn-success">Edit</button> 
+            </div>
+</EditForm>
+
+@code {
+    private IList<District>? districts = new List<District>();
+    private Tehsil? tehsil = new();
+    private string? errorMessage;
+    [Parameter]public int id { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                tehsil = await HttpModule.GetFromJsonAsync<Tehsil>($"api/Tehsils/{id}");
+                districts = await HttpModule.GetFromJsonAsync<List<District>>($"api/Districts");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch(AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+        }
+    }
+
+    public void tehsilClicked(ChangeEventArgs Event)
+    {        
+        tehsil.DistrictId = int.Parse(Event.Value.ToString());
+        this.StateHasChanged();
+    }
+
+    public async Task OnUpdate()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync($"api/Tehsils/{id}", tehsil);
+            toastService.ShowInfo("Updated Successfully", "Tehsil");
+            Navigate.NavigateTo("Tehsil/View");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Error Occured on server response", "Error");
+            errorMessage = "Error occured on server response";
+        }
+    }
+    
+    public async Task errormsg()
+    {
+        Navigate.NavigateTo("Tehsil/View");
+    }
+}

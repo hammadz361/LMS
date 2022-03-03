@@ -1,0 +1,143 @@
+﻿@page "/School/Edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+<EditForm Model="@Schools" OnValidSubmit="@OnUpdate">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="row justify-content-center align-items-center">
+        <div class="card col-sm-6 px-0">
+            <h4 class="card-header text-center">Edit School</h4>
+            <div class="card-body">
+                <div class="row">
+                        <div class=col-md>
+                            <label for="name" class="form-text">Name</label>
+                            <InputText class="form-control" id="name" @bind-Value="Schools.Name" /><br />
+                            <ValidationMessage For="@(() => Schools.Name)" />
+                           </div>
+                    </div>
+                     <div class="row">
+                         <div class="col-md">
+                             <select class="form-control" @onchange="@SchoolLevelClicked">
+                             <option>@schoolLevels[id].Name</option>
+                                @if (schoolLevels != null)
+                                {
+                                    @foreach (var schoolLevel in schoolLevels)
+                                    {
+                                        <option value="@schoolLevel.SchoolLevelId">@schoolLevel.Name</option>
+                                    }
+                                }
+                             </select>
+                         </div>
+                     </div><br />
+
+                     <div class="row">
+                         <div class="col-md">
+                            <select class="form-control" @onchange="@GenderClicked">
+                            <option>@genders[id].Name</option>
+                                @if (genders != null)
+                                {
+                                    @foreach (var gender in genders)
+                                    {
+                                        <option value="@gender.GenderId">@gender.Name</option>
+                                    }
+                                }
+                            </select>
+                         </div>
+                     </div><br />
+
+                     <div class="row">
+                        <div class="col-md">
+                            <select class="form-control" @onchange="@UnionCouncilClicked">
+                                <option>@unionCouncils[id].Name</option>
+                                @if (unionCouncils != null)
+                                {
+                                    @foreach (var unionCouncil in unionCouncils)
+                                    {
+                                        <option value="@unionCouncil.UnionCouncilId">@unionCouncil.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div><br />
+                <button type="submit" class="btn btn-success">Edit</button> 
+            </div>
+        </div> 
+    </div> 
+</EditForm>
+
+@code {
+    private School? Schools = new();
+    private IList<SchoolLevel>? schoolLevels = new List<SchoolLevel>();
+    private IList<Gender>? genders = new List<Gender>();
+    private IList<UnionCouncil>? unionCouncils = new List<UnionCouncil>();
+    private string? errorMessage;
+    [Parameter]public int id { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                Schools = await HttpModule.GetFromJsonAsync<School>($"api/Schools/{id}");
+                schoolLevels = await HttpModule.GetFromJsonAsync<IList<SchoolLevel>>($"api/SchoolLevels");
+                genders = await HttpModule.GetFromJsonAsync<IList<Gender>>($"api/Genders");
+                unionCouncils = await HttpModule.GetFromJsonAsync<IList<UnionCouncil>>($"api/UnionCouncils");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch(AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+        }
+    }
+
+    public async Task OnUpdate()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync($"api/Schools/{id}", Schools);
+            toastService.ShowInfo("Updated Successfully", "School");
+            Navigate.NavigateTo("School/Index");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Error Occured on server response", "Error");
+            errorMessage = "Error Occured on server response";
+        }
+
+    }
+    public void SchoolLevelClicked(ChangeEventArgs Event)
+    {        
+        Schools.SchoolLevelId = int.Parse(Event.Value.ToString());
+        this.StateHasChanged();
+    }
+    public void GenderClicked(ChangeEventArgs Event)
+    {        
+        Schools.GenderId = int.Parse(Event.Value.ToString());
+        this.StateHasChanged();
+    }
+    public void UnionCouncilClicked(ChangeEventArgs Event)
+    {        
+        Schools.UnionCouncilId = int.Parse(Event.Value.ToString());
+        this.StateHasChanged();
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("Grade/View");
+    }
+}

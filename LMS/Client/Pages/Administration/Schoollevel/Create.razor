@@ -1,0 +1,56 @@
+﻿@page "/SchoolLevel/Create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+
+<div class="container">
+    <div class="row">
+        @if(this.errorMessage != null){
+            <div class="alert alert-danger my-5" role="alert">
+                @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+            </div>
+        }
+    </div>
+    <EditForm Model="@SchoolLevels" OnValidSubmit="@OnSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+        <div class="row justify-content-center align-items-center">
+            <div class="card col-sm-6 px-0">
+                <h4 class="card-header text-center">Create SchoolLevel</h4>
+            <div class="card-body">
+                <InputText class="form-control" id="name" @bind-Value="SchoolLevels.Name" />
+                <ValidationMessage For="@(() => SchoolLevels.Name)" /><br />
+                <button type="submit" class="btn btn-success">Submit</button>
+            </div>
+            </div> 
+        </div> 
+</EditForm>
+</div>
+
+@code {
+    private SchoolLevel SchoolLevels = new();
+    private string? errorMessage;
+    public async Task OnSubmit()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync("api/SchoolLevels", SchoolLevels);
+            toastService.ShowSuccess("Added Successfully!..", nameof(SchoolLevel));
+            Navigate.NavigateTo("SchoolLevel/View");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Error Occured on server response", "Error");
+            errorMessage = "Error Occured on server response";
+        }
+
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("SchoolLevel/View");
+    }
+}

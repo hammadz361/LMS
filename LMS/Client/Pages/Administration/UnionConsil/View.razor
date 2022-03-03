@@ -1,0 +1,113 @@
+﻿@page "/UnionCouncil/View"
+@using LMS.Shared.Models;
+@inject NavigationManager Navigate
+@inject HttpClient HttpModule
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IToastService toastService
+@inject IJSRuntime JsRuntime
+
+<h1>List of Union Consils</h1>
+@if(this.errorMessage != null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+    </div>
+}
+@if (unionCouncils == null){
+    <div class="alert alert-danger my-5" role="alert">
+      @errorMessage .
+    </div>
+    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateUnionCouncil"
+                    >Create Role</button>
+    toastService.ShowInfo("NoRecord Found", "Topics");
+}
+else
+{
+    <table class="table table-responsive table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Tehsil</th>
+                <th>
+                    <button class="btn btn-primary col-4 ml-3" 
+                            @onclick="CreateUnionCouncil"
+                    >Add UnionCouncil</button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var unionCouncil in unionCouncils)
+            {
+                <tr>
+                    <td>@unionCouncil.Name</td>
+                    <td>@unionCouncil.Tehsil.Name</td>
+                    <td align="center">
+                        <button class="btn btn-success col-4" 
+                                @onclick="( () => 
+                                    UpdateUnionCouncil(unionCouncil.UnionCouncilId))"
+                        >Edit</button>
+                        <button class="btn btn-warning col-4" 
+                                @onclick="( () => 
+                                    DeleteUnionCouncil(unionCouncil.UnionCouncilId))"
+                        >delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IList<UnionCouncil>? unionCouncils = new List<UnionCouncil>();
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                unionCouncils = await HttpModule.GetFromJsonAsync<List<UnionCouncil>>("api/UnionCouncils");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch (AccessTokenNotAvailableException exception)
+        {
+            exception.Redirect();
+            toastService.ShowInfo("Login is Nessecary..", "Login");
+        }
+    }
+
+    public async void DeleteUnionCouncil(int id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await HttpModule.DeleteAsync($"api/UnionCouncils/{id}");
+            toastService.ShowError("Deleted Successfully", "UnionCouncils");
+            unionCouncils = await HttpModule.GetFromJsonAsync<List<UnionCouncil>>("api/UnionCouncils");
+            await InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void UpdateUnionCouncil(int id)
+    {
+        Navigate.NavigateTo($"UnionCouncil/Edit/{id}");
+    }
+
+    public void CreateUnionCouncil()
+    {
+        Navigate.NavigateTo("UnionCouncil/Create");
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("UnionCouncil/View");
+    }
+}

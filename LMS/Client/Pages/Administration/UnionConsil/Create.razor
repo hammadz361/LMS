@@ -1,0 +1,102 @@
+﻿@page "/UnionConsil/Create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using LMS.Shared.Models
+@attribute [Authorize]
+@inject HttpClient HttpModule
+@inject NavigationManager Navigate
+@inject IToastService toastService
+
+<div class="container">
+    <div class="row">
+        @if(this.errorMessage != null){
+            <div class="alert alert-danger my-5" role="alert">
+                @errorMessage <a @onclick="errormsg" class="alert-link">Go to home page</a>. Click on link.
+            </div>
+        }
+    </div>
+    <EditForm Model="@unionCouncil" OnValidSubmit="@OnSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="row justify-content-center align-items-center">
+        <div class="card col-sm-6 px-0">
+          <h4 class="card-header text-center">Create UnionConsil</h4>
+          <div class="card-body">
+              <div class="row">
+                  <div class=col-sm>
+                      <label for="name" class="form-text">Name</label>
+                      <InputText class="form-control" id="name" @bind-Value="unionCouncil.Name" /><br />
+                      <ValidationMessage For="@(() => unionCouncil.Name)" />
+                  </div>
+              </div>
+              <div class="row">
+                  <div class="col-sm">
+                      <select class="form-control" @onchange="@tehsilClicked">
+                      <option value="">-- Select Tehsil --</option>
+                            @if (tehsils != null)
+                            {
+                                @foreach (var tehsil in tehsils)
+                                {
+                                    <option value="@tehsil.TehsilId">@tehsil.Name</option>
+                                }
+                            }
+                      </select>
+                  </div>
+              </div><br />
+              <button type="submit" class="btn btn-success">Submit</button>
+          </div>
+        </div>
+        </div>
+    </EditForm>
+</div>
+
+
+@code {
+    private UnionCouncil unionCouncil = new();
+    private IList<Tehsil>? tehsils = new List<Tehsil>();
+    private string? errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            try
+            {
+                tehsils = await HttpModule.GetFromJsonAsync<IList<Tehsil>>($"api/Tehsils");
+            }
+            catch (Exception)
+            {
+                toastService.ShowError("Dont Have access only admin can access this page", "Error");
+                errorMessage = "Dont Have access only admin can access this page";
+            }
+        }
+        catch(AccessTokenNotAvailableException e)
+        {
+            e.Redirect();
+            toastService.ShowInfo("Login is Necessary.. ", "Login");
+        }
+    }
+    public async Task OnSubmit()
+    {
+        try
+        {
+            await HttpModule.PostAsJsonAsync("api/UnionCouncils", unionCouncil);
+            toastService.ShowSuccess("Added Successfully!..", nameof(UnionCouncil));
+            Navigate.NavigateTo("UnionCouncil/View");
+        }
+        catch(Exception)
+        {
+            toastService.ShowError("Error Occured on server response", "Error");
+            errorMessage = "Error Occured on server response";
+        }
+
+    }
+    public void tehsilClicked(ChangeEventArgs Event)
+    {        
+        unionCouncil.TehsilId = int.Parse(Event.Value.ToString());
+        this.StateHasChanged();
+    }
+    public void errormsg()
+    {
+        Navigate.NavigateTo("UnionCouncil/View");
+    }
+}
