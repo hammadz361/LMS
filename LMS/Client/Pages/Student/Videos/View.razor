@@ -11,10 +11,11 @@
 <style>
 div.card {
 	position: relative;
-	width: 15rem; 
+	width: 13rem;
     cursor:pointer;
 	background: transparent;
 	margin: 20px;
+    padding: 0px;
 	border-radius: 15px;
 	display: flex;
 	justify-content: center;
@@ -22,16 +23,16 @@ div.card {
 	backdrop-filter: blur(10px);
 }
 div > img{
-    height: 10rem;
+    height: 6rem;
 }
 div#effect5:hover
 {
   box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22) !important;
-  -webkit-transform: rotate(-3deg);
-  -moz-transform: rotate(-3deg);
-  -o-transform: rotate(-3deg);
-  -ms-transform: rotate(-3deg);
-  transform: rotate(-3deg);
+  -webkit-transform: rotate(-1deg);
+  -moz-transform: rotate(-1deg);
+  -o-transform: rotate(-1deg);
+  -ms-transform: rotate(-1deg);
+  transform: rotate(-1deg);
 }
 
 }
@@ -60,9 +61,9 @@ else
                 if (video != null)
                 {
                     <div class="card m-2 shadow-sm" id="effect5" @onclick="@(() => ShowVideo(video.VideoLink))">
-                        <img src="/images/Subject/video.png" class="card-img-top" alt="No Image Found">
+                        <img src="/images/Subject/Video.jpg" class="card-img-top" alt="No Image Found">
                         <div class="card-body">
-                            <h4 class="card-title">Topics</h4>
+                            <h5 class="card-title">Topics</h5>
                             <hr>
                             @foreach(var topic in topics.Where(x => x.VideoId == video.VideoId))
                             {
